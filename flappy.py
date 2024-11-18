@@ -35,6 +35,17 @@ bg = pygame.image.load('img/bg.png')
 ground_img = pygame.image.load('img/ground.png')
 button_img = pygame.image.load('img/restart.png')
 
+# Load and resize the logo image
+logo_img = pygame.image.load('img/logo.png')
+# Get the original dimensions
+logo_width = logo_img.get_width()
+logo_height = logo_img.get_height()
+# Calculate new dimensions (80% of original size)
+new_width = int(logo_width * 0.8)
+new_height = int(logo_height * 0.8)
+# Resize the logo image
+logo_img = pygame.transform.scale(logo_img, (new_width, new_height))
+
 # Function for outputting text onto the screen
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
@@ -65,7 +76,7 @@ class Bird(pygame.sprite.Sprite):
 
     def update(self):
 
-        if flying == True:
+        if flying:
             # Apply gravity
             self.vel += 0.5
             if self.vel > 8:
@@ -73,10 +84,10 @@ class Bird(pygame.sprite.Sprite):
             if self.rect.bottom < 768:
                 self.rect.y += int(self.vel)
 
-        if game_over == False:
+        if not game_over:
             # Jump
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_SPACE] and self.clicked == False:
+            if keys[pygame.K_SPACE] and not self.clicked:
                 self.clicked = True
                 self.vel = -10
             if not keys[pygame.K_SPACE]:
@@ -158,6 +169,7 @@ while run:
     # Draw background
     screen.blit(bg, (0, 0))
 
+    # Draw pipes and bird
     pipe_group.draw(screen)
     bird_group.draw(screen)
     bird_group.update()
@@ -165,48 +177,56 @@ while run:
     # Draw and scroll the ground
     screen.blit(ground_img, (ground_scroll, 768))
 
-    # Check the score
-    if len(pipe_group) > 0:
-        if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.left \
-            and bird_group.sprites()[0].rect.right < pipe_group.sprites()[0].rect.right \
-            and pass_pipe == False:
-            pass_pipe = True
-        if pass_pipe == True:
-            if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.right:
-                score += 1
-                pass_pipe = False
-    draw_text(str(score), font, white, int(screen_width / 2), 20)
+    # Display the logo before the game starts
+    if not flying and not game_over:
+        # Calculate position to center the logo and move it higher
+        logo_x = (screen_width - logo_img.get_width()) // 2
+        logo_y = (screen_height - logo_img.get_height()) // 2 - 100  # Move up by 100 pixels
+        # Display the logo
+        screen.blit(logo_img, (logo_x, logo_y))
+    else:
+        # Check the score
+        if len(pipe_group) > 0:
+            if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.left \
+                and bird_group.sprites()[0].rect.right < pipe_group.sprites()[0].rect.right \
+                and not pass_pipe:
+                pass_pipe = True
+            if pass_pipe:
+                if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.right:
+                    score += 1
+                    pass_pipe = False
+        draw_text(str(score), font, white, int(screen_width / 2), 20)
 
-    # Look for collision
-    if pygame.sprite.groupcollide(bird_group, pipe_group, False, False) or flappy.rect.top < 0:
-        game_over = True
-    # Once the bird has hit the ground it's game over and no longer flying
-    if flappy.rect.bottom >= 768:
-        game_over = True
-        flying = False
+        # Look for collision
+        if pygame.sprite.groupcollide(bird_group, pipe_group, False, False) or flappy.rect.top < 0:
+            game_over = True
+        # Once the bird has hit the ground it's game over and no longer flying
+        if flappy.rect.bottom >= 768:
+            game_over = True
+            flying = False
 
-    if flying == True and game_over == False:
-        # Generate new pipes
-        time_now = pygame.time.get_ticks()
-        if time_now - last_pipe > pipe_frequency:
-            pipe_height = random.randint(-100, 100)
-            btm_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, -1)
-            top_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, 1)
-            pipe_group.add(btm_pipe)
-            pipe_group.add(top_pipe)
-            last_pipe = time_now
+        if flying and not game_over:
+            # Generate new pipes
+            time_now = pygame.time.get_ticks()
+            if time_now - last_pipe > pipe_frequency:
+                pipe_height = random.randint(-100, 100)
+                btm_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, -1)
+                top_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, 1)
+                pipe_group.add(btm_pipe)
+                pipe_group.add(top_pipe)
+                last_pipe = time_now
 
-        pipe_group.update()
+            pipe_group.update()
 
-        ground_scroll -= scroll_speed
-        if abs(ground_scroll) > 35:
-            ground_scroll = 0
+            ground_scroll -= scroll_speed
+            if abs(ground_scroll) > 35:
+                ground_scroll = 0
 
-    # Check for game over and reset
-    if game_over == True:
-        if button.draw():
-            game_over = False
-            score = reset_game()
+        # Check for game over and reset
+        if game_over:
+            if button.draw():
+                game_over = False
+                score = reset_game()
 
     # Event handling
     for event in pygame.event.get():
@@ -214,7 +234,7 @@ while run:
             run = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                if flying == False and game_over == False:
+                if not flying and not game_over:
                     flying = True
 
     pygame.display.update()
